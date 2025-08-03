@@ -76,6 +76,8 @@ class CodegeexChatModel:
                 top_p=request.top_p,
                 repetition_penalty=request.presence_penalty
             )
+            if isinstance(response, dict):
+                response = '\n'.join([response.get('name'), response.get('content') or str(response.get('parameters'))])
             resp = ChatCompletionResponse()
             resp.choices[0].message.content = response
             resp.choices[0].finish_reason = 'stop'
