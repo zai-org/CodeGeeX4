@@ -1,0 +1,44 @@
+# Dockerfile for CodeGeeX4 Model Inference Service
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HF_HOME=/app/models
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PyTorch CPU (smaller) or GPU as needed
+RUN pip install --no-cache-dir \
+    torch \
+    torchvision \
+    torchaudio \
+    --index-url https://download.pytorch.org/whl/cpu
+
+RUN pip install --no-cache-dir \
+    transformers==4.40.2 \
+    ollama==0.1.27 \
+    fastapi==0.104.1 \
+    uvicorn==0.24.0 \
+    pydantic==2.5.0
+
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Create directories
+RUN mkdir -p /app/models && chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+COPY --chown=appuser:appuser CodeGeeX4/server.py /app/
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]
